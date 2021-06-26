@@ -53,6 +53,7 @@ class BasicBlock(nn.Module):
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
         self.stride = stride
+        self.out_dim = planes
 
     def forward(self, x):
         identity = x
@@ -93,6 +94,7 @@ class Bottleneck(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
+        self.out_dim = planes * self.expansion
 
     def forward(self, x):
         identity = x
@@ -119,7 +121,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
+    def __init__(self, block, layers, width_mult=1, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None, dropout=0., haslinear=False):
         super(ResNet, self).__init__()
@@ -133,7 +135,7 @@ class ResNet(nn.Module):
         else:
             self.dropout_layer = None
 
-        self.inplanes = 64
+        self.inplanes = int(64*width_mult)
         self.dilation = 1
         if replace_stride_with_dilation is None:
             # each element in the tuple indicates if we should replace
@@ -150,15 +152,15 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
+        self.layer1 = self._make_layer(block, int(64*width_mult), layers[0])
+        self.layer2 = self._make_layer(block, int(128*width_mult), layers[1], stride=2,
                                        dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
+        self.layer3 = self._make_layer(block, int(256*width_mult), layers[2], stride=2,
                                        dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
+        self.layer4 = self._make_layer(block, int(512*width_mult), layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.Linear(int(512*width_mult) * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -230,9 +232,9 @@ class ResNet(nn.Module):
     def forward(self, x):
         return self._forward_impl(x)
 
-def _resnet(arch, block, layers, pretrained, progress, **kwargs):
-    model = ResNet(block, layers, **kwargs)
-    if pretrained:
+def _resnet(arch, block, layers, pretrained, progress, width_mult=1, **kwargs):
+    model = ResNet(block, layers, width_mult=width_mult, **kwargs)
+    if pretrained and width_mult == 1:
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
         del state_dict['fc.weight']

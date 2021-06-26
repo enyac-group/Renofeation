@@ -1,10 +1,12 @@
-# [Renofeation: Improving the Adversarial Robustness of Transfer Learning via Noisy Feature Distillation](https://arxiv.org/abs/2002.02998)
+# [Renofeation: A Simple Transfer Learning Method for Improved Adversarial Robustness](https://openaccess.thecvf.com/content/CVPR2021W/TCV/html/Chin_Renofeation_A_Simple_Transfer_Learning_Method_for_Improved_Adversarial_Robustness_CVPRW_2021_paper.html)
+
+This is the official repository for our paper [Renofeation: A Simple Transfer Learning Method for Improved Adversarial Robustness](https://openaccess.thecvf.com/content/CVPR2021W/TCV/html/Chin_Renofeation_A_Simple_Transfer_Learning_Method_for_Improved_Adversarial_Robustness_CVPRW_2021_paper.html), which is presented at CVPR'21 Workshop on Fair, Data Efficient and Trusted Computer Vision and has received the **best paper award**.
 
 ## Don't fine-tune, Renofeate <img src="maintenance.png" width="30">
 
 (Icon made by Eucalyp perfect from www.flaticon.com)
 
-In our recent paper "[Improving the Adversarial Robustness of Transfer Learning via Noisy Feature Distillation](https://arxiv.org/abs/2002.02998)", we show that numerous fine-tuning methods are vulnerable to [adversarial examples based on the pre-trained model](https://openreview.net/forum?id=BylVcTNtDS). This poses security concerns for indutrial applications that are based on fine-tuning such as [Google's Cloud AutoML](https://cloud.google.com/automl) and [Microsoft's Custom Vision](https://azure.microsoft.com/en-us/services/cognitive-services/custom-vision-service/).
+In our recent paper "[Renofeation: A Simple Transfer Learning Method for Improved Adversarial Robustness](https://openaccess.thecvf.com/content/CVPR2021W/TCV/html/Chin_Renofeation_A_Simple_Transfer_Learning_Method_for_Improved_Adversarial_Robustness_CVPRW_2021_paper.html)", we show that numerous fine-tuning methods are vulnerable to [adversarial examples based on the pre-trained model](https://openreview.net/forum?id=BylVcTNtDS). This poses security concerns for indutrial applications that are based on fine-tuning such as [Google's Cloud AutoML](https://cloud.google.com/automl) and [Microsoft's Custom Vision](https://azure.microsoft.com/en-us/services/cognitive-services/custom-vision-service/).
 
 To combat such attacks, we propose _**Re**-training with **no**isy **fea**ture distilla**tion**_ or Renofeation. Renofeation does not start training from pre-trained weights but rather re-initialize the weights and train with noisy feature distillation. To instantiate noisy feature distillation, we incorporate [spatial dropout](https://arxiv.org/abs/1411.4280) and [stochastic weight averaging](https://arxiv.org/abs/1803.05407) with feature distillation to avoid over-fitting to the pre-trained feature without hurting the generalization performance, which in turn improves the robustness.
 
@@ -90,10 +92,12 @@ The scripts for training and evaluating *DELTA*, *Renofeation*, and *Re-training
 ## Citation
 
 ```
-@article{chin2020renofeation,
-  title={Improving the Adversarial Robustness of Transfer Learning via Noisy Feature Distillation},
-  author={Chin, Ting-Wu and Zhang, Cha and Marculescu, Diana},
-  journal={arXiv preprint arXiv:2002.02998},
-  year={2020}
+@InProceedings{Chin_2021_CVPR,
+    author    = {Chin, Ting-Wu and Zhang, Cha and Marculescu, Diana},
+    title     = {Renofeation: A Simple Transfer Learning Method for Improved Adversarial Robustness},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops},
+    month     = {June},
+    year      = {2021},
+    pages     = {3243-3252}
 }
 ```

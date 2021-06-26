@@ -138,8 +138,9 @@ def test(model, teacher, loader, loss=False):
                     for key in reg_layers:
                         src_x = reg_layers[key][0].out
                         tgt_x = reg_layers[key][1].out
+                        tgt_channels = tgt_x.shape[1]
 
-                        regloss = featloss(src_x, tgt_x.detach()).mean()
+                        regloss = featloss(src_x[:,:tgt_channels,:,:], tgt_x.detach()).mean()
 
                         total_feat_reg[key] += regloss.item()
 
@@ -217,7 +218,8 @@ def train(model, train_loader, val_loader, iterations=9000, lr=1e-2, name='', l2
 
                 src_x = reg_layers[key][0].out
                 tgt_x = reg_layers[key][1].out
-                regloss += featloss(src_x, tgt_x.detach())
+                tgt_channels = tgt_x.shape[1]
+                regloss += featloss(src_x[:,:tgt_channels,:,:], tgt_x.detach())
 
             regloss = args.feat_lmda * regloss
             loss += regloss
@@ -311,6 +313,8 @@ def get_args():
     parser.add_argument("--label_smoothing", type=float, default=0)
     parser.add_argument("--checkpoint", type=str, default='', help='Load a previously trained checkpoint')
     parser.add_argument("--network", type=str, default='resnet18', help='Network architecture. Currently support: \{resnet18, resnet50, resnet101, mbnetv2\}')
+    parser.add_argument("--tnetwork", type=str, default='resnet18', help='Network architecture. Currently support: \{resnet18, resnet50, resnet101, mbnetv2\}')
+    parser.add_argument("--width_mult", type=float, default=1)
     parser.add_argument("--shot", type=int, default=-1, help='Number of training samples per class for the training dataset. -1 indicates using the full dataset.')
     parser.add_argument("--log", action='store_true', default=False, help='Redirect the output to log/args.name.log')
     args = parser.parse_args()
@@ -319,6 +323,9 @@ def get_args():
 # Used to matching features
 def record_act(self, input, output):
     self.out = output
+
+def record_act_with_1x1(self, input, output):
+    self.out = self[-1].dim_matching(output)
 
 if __name__ == '__main__':
     args = get_args()
@@ -360,13 +367,13 @@ if __name__ == '__main__':
         batch_size=args.batch_size, shuffle=False,
         num_workers=8, pin_memory=False)
 
-    model = eval('{}_dropout'.format(args.network))(pretrained=True, dropout=args.dropout, num_classes=train_loader.dataset.num_classes).cuda()
+    model = eval('{}_dropout'.format(args.network))(pretrained=True, dropout=args.dropout, width_mult=args.width_mult, num_classes=train_loader.dataset.num_classes).cuda()
     if args.checkpoint != '':
         checkpoint = torch.load(args.checkpoint)
         model.load_state_dict(checkpoint['state_dict'])
 
     # Pre-trained model
-    teacher = eval('{}_dropout'.format(args.network))(pretrained=True, dropout=0, num_classes=train_loader.dataset.num_classes).cuda()
+    teacher = eval('{}_dropout'.format(args.tnetwork))(pretrained=True, dropout=0, num_classes=train_loader.dataset.num_classes).cuda()
 
     if 'mbnetv2' in args.network:
         reg_layers = {0: [model.layer1], 1: [model.layer2], 2: [model.layer3], 3: [model.layer4], 4: [model.layer5]}
@@ -377,10 +384,31 @@ if __name__ == '__main__':
         model.layer5.register_forward_hook(record_act)
     else:
         reg_layers = {0: [model.layer1], 1: [model.layer2], 2: [model.layer3], 3: [model.layer4]}
-        model.layer1.register_forward_hook(record_act)
-        model.layer2.register_forward_hook(record_act)
-        model.layer3.register_forward_hook(record_act)
-        model.layer4.register_forward_hook(record_act)
+        # if args.width_mult > 1:
+        #     model.layer1.register_forward_hook(record_act_with_1x1)
+        #     model.layer2.register_forward_hook(record_act_with_1x1)
+        #     model.layer3.register_forward_hook(record_act_with_1x1)
+        #     model.layer4.register_forward_hook(record_act_with_1x1)
+
+        #     model.layer1[-1].dim_matching = torch.nn.Conv2d(model.layer1[-1].out_dim, int(model.layer1[-1].out_dim/args.width_mult), kernel_size=1, bias=False).cuda()
+        #     model.layer2[-1].dim_matching = torch.nn.Conv2d(model.layer2[-1].out_dim, int(model.layer2[-1].out_dim/args.width_mult), kernel_size=1, bias=False).cuda()
+        #     model.layer3[-1].dim_matching = torch.nn.Conv2d(model.layer3[-1].out_dim, int(model.layer3[-1].out_dim/args.width_mult), kernel_size=1, bias=False).cuda()
+        #     model.layer4[-1].dim_matching = torch.nn.Conv2d(model.layer4[-1].out_dim, int(model.layer4[-1].out_dim/args.width_mult), kernel_size=1, bias=False).cuda()
+        # else:
+        #     model.layer1.register_forward_hook(record_act)
+        #     model.layer2.register_forward_hook(record_act)
+        #     model.layer3.register_forward_hook(record_act)
+        #     model.layer4.register_forward_hook(record_act)
+
+        model.layer1.register_forward_hook(record_act_with_1x1)
+        model.layer2.register_forward_hook(record_act_with_1x1)
+        model.layer3.register_forward_hook(record_act_with_1x1)
+        model.layer4.register_forward_hook(record_act_with_1x1)
+
+        model.layer1[-1].dim_matching = torch.nn.Conv2d(model.layer1[-1].out_dim, int(teacher.layer1[-1].out_dim/args.width_mult), kernel_size=1, bias=False).cuda()
+        model.layer2[-1].dim_matching = torch.nn.Conv2d(model.layer2[-1].out_dim, int(teacher.layer2[-1].out_dim/args.width_mult), kernel_size=1, bias=False).cuda()
+        model.layer3[-1].dim_matching = torch.nn.Conv2d(model.layer3[-1].out_dim, int(teacher.layer3[-1].out_dim/args.width_mult), kernel_size=1, bias=False).cuda()
+        model.layer4[-1].dim_matching = torch.nn.Conv2d(model.layer4[-1].out_dim, int(teacher.layer4[-1].out_dim/args.width_mult), kernel_size=1, bias=False).cuda()
 
 
     # Stored pre-trained weights for computing L2SP
